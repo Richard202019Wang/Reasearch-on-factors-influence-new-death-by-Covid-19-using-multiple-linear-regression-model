@@ -1,0 +1,396 @@
+---
+title: "Reasearch on factors influence new death by Covid-19 using multiple linear regression model"
+author: "Canyang Wang"
+date: "2022/12/16"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+### My Question of Proposed Research
+Studying the factors that may influence the number of new deaths from COVID-19 is critical for people in Canada, as they want to avoid dying from the disease. Therefore, conducting research to investigate the factors that impact the number of new COVID-19 deaths is helpful for scientists to come up with ways to save more lives. Many people are still facing the issue of COVID-19, and understanding the factors that can reduce the number of new COVID-19 deaths can improve their quality of life to some extent.
+
+### Background and Literature
+One article mentioned that country type influences the death rate and they got the result that in some highly developed countries, people have less death rate and positive rate due to the cause of Covid-19.(WSerhii Kozlovskyi et al.,2021). Their research indicates that positive rate may be a factor, thus, I also use it as my variable. But for the difference, it is also clear that they argued the determinants of Covid-19 death rate will be affected by different types of countries.
+
+
+A second article found that clinical conditions and vaccination are important for the death rate of COVID-19 patients. They concluded that certain clinical conditions, particularly asthma, increase the death rate, while a high vaccination rate decreases it. Their research indicates that vaccination influences the number of new deaths, so I have also included it as a variable in my study. However, I did not consider clinical conditions in my research because my dataset does not have relevant data.
+
+
+A third article found that older age and early hospitalization also impact the risk of death from COVID-19. They showed that younger patients and those who sought hospital care early have a lower risk of death from COVID-19. Like their research, I also looked at the impact of hospitalization on reducing the number of new COVID-19 deaths. However, we studied cases in different countries, with their study examining cases in China and mine looking at cases in Canada.
+
+\newpage
+
+#	Methods section
+
+```{r,message=FALSE, echo=FALSE,warning=FALSE, include=FALSE, message=FALSE}
+library(tidyverse)
+covid=read.csv("~/sta302/302 final part3/owid-covid-data.csv")
+library(gridExtra)
+
+```
+
+## Model selection
+
+### Data Description and Data Chosen
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+covid_canada = filter(covid, location == "Canada")
+new_covid_canada = covid_canada %>% select(c(reproduction_rate, new_deaths, new_tests_per_thousand, new_vaccinations, positive_rate, icu_patients_per_million, hosp_patients_per_million))
+no_na_canada = na.omit(new_covid_canada)
+```
+
+```{r, warning=FALSE, include=FALSE}
+set.seed(1006931652)
+train_rows <- sample(1:536, 400, replace=FALSE) 
+train_data <- no_na_canada[train_rows,]
+test_data = no_na_canada[-train_rows,]
+```
+
+The variables I chose are relatively consistent with my research question and my background research based on my cleaned dataset:
+
+
+- reproduction_rate: The rate people who got Covid-19 and then get again. 
+
+
+- new_deaths: The new number of people who died because of Covid-19 in Canada 
+
+
+- new_tests_per_thousand: The people per thousand who take a test for Covid-19 in Canada 
+
+
+- new_vaccinations: The new people who get vaccinations in Canada 
+
+
+- positive_rate: The rate for the tested people who are positive in Canada 
+
+
+- icu_patients_per_million: The patients per million who are in ICU in Canada 
+
+
+- hosp_patients_per_million: People per million who go to a hospital in Canada 
+
+I divided the final cleaned data into training data and testing data. Training data is 400 rows and testing data is 136 rows.
+
+Use the training data to fit a multiple linear regression (MLR) model. I remove variables with p-values greater than 0.05 to create a  model and refit the model until all variables are significant. I then use the variance inflation factor (VIF) to test for dependencies between variables and remove any with VIF values greater than 5 to create a new model. I use a partial F test to compare the new model to a subset model with a randomly removed variable(compared with the new model) and choose the model based on reject H0 or not(p-value less than 0.05 means I should reject H0 to choose new model) otherwise, choose the subset of new model). Finally, I use an F test on the chosen model to ensure all variables have p-values less than 0.05 and create a final model.
+
+
+## Model validation
+
+I basically validate my model in two steps:
+
+Firstly, using a function in r code to calculate adjusted R square, AIC, AICc, BIC and SSres compared with a subset of fitted model. If the fitted model has the biggest $R_{adj}^2$ or the smallest $R^2$, AIC, AICc, BIC, I can conclude that my fitted model is the best and nearly validated.
+
+
+Secondly, using the test data to fit the training model. If I find my test model's variables are not all significant(check p-value less than 0.05 or not) use the same variable as the training model, then it happens limitations in fitted training model. Moreover, also check adjusted R square, AIC, AICc, BIC and SSres have similar values as my train model, if not, add this into limitation.
+
+
+
+## Model Violations and Diagnostics
+
+Using residual plots and QQ plots to check the four assumptions of my model: normality, linearity, homoscedasticity, and independence. I use QQ plots to check for normality, and if the points do not lie on a straight line, I may need to use a transformation like Box-Cox to modify my model. I use residual plots to check for linearity and independence, and if there are patterns or clustering, I may need to transform the model or remove variables. I also check for homoscedasticity by looking at the variance(expand outward or shrink inward) in the residual plot and may use a variance stabilizing transformation like taking the log if needed.
+
+Then check for leverage, outlier and influence points.
+
+
+If standard residual points $r_i$ follow standard normal and don't belong to [-2,2] in small datasets or [-4,4] in large datasets, they are outliers so remove these points.
+
+
+If $D_i > 50th$ percentile of F(p + 1, n - p - 1) $|DFFITS_i| > 2 * \sqrt\frac{p + 1}{n}$ and $|DFBETA_{j(i)}| > \frac{2}{\sqrt n}$, these are influential points and remove these points.
+
+
+Get leverage points by judging whether $h_{ii} > \frac{p+1}{n}$.
+
+# Result
+
+## Description of Data
+
+For finding my dataset, I use "kaggle" and then choose the most convenient and suitable dataset called "owid-covid-data.csv". The original dataset I found online had 219175 observations and 67 variables in total.
+
+Firstly, filtering out the original data according to the observations have "location=Canada", then removing the observations which have NA and selecting the variables present in method section to make a new dataset. 
+
+
+The Table6 shows that the chosen variables in my dataset have several upper outliers need to remove. It also shows that the new deaths have a large range, which may indicate that fewer new deaths will occur in the future as people become more knowledgeable about Covid-19.
+
+Scatter plots show that increased positive rate, ICU patients, hospital visits, and testing lead to an increase in new deaths. In contrast, increased vaccination, and reproduction rate lead to a decrease in new deaths.
+
+## Presenting the Analysis Process and the Results
+
+
+```{r, warning=FALSE, echo=FALSE, include=FALSE}
+library(kableExtra)
+set.seed(100000)
+first_version = lm(new_deaths ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand + reproduction_rate + icu_patients_per_million + positive_rate ,data = train_data)
+table1 = kbl(broom::tidy(first_version)[,], caption = "Summary Table of First Version of Model", 
+      digits = 6, format = "markdown", padding= 3) 
+
+second_version=lm(new_deaths ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand + icu_patients_per_million + positive_rate ,data = train_data)
+table2 = kbl(broom::tidy(second_version)[,], caption = "Summary Table of Second Version of Model", 
+      digits = 6, format = "markdown", padding= 3) 
+
+third_version=lm(new_deaths ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand + positive_rate ,data = train_data)
+table3 = kbl(broom::tidy(third_version)[,], caption = "Summary Table of Third Version of Model", 
+      digits = 6, format = "markdown", padding= 3) 
+
+third_version_new=lm(sqrt(new_deaths) ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand + positive_rate ,data = train_data)
+table4 = kbl(broom::tidy(third_version_new)[,], caption = "Summary Table of Transformed Third Version of Model", 
+      digits = 6, format = "markdown", padding= 3) 
+
+
+#bound_table <- cbind(table1, table2)
+#bound_table
+
+# Check multicolinearity
+#install.packages("VIF")
+#install.packages("car")
+library(car)
+vif(third_version)
+
+```
+
+Table 1: Summary of three versions of model
+
+term  | estimate |  std.error |  statistic |  p.value | VIF|
+------|----------|------------|------------|----------|----|
+(Intercept1)                |    -0.323025|       12.240775|      -0.026389|     0.978960|    NA
+- new_vaccinations_1          |     -0.000035|       0.000013|      -2.780620|     0.005687|   NA
+- hosp_patients_per_million_1 |     0.696312|       0.061545|      11.313867|     0.000000|   NA
+- new_tests_per_thousand_1    |     5.495283|       1.574346|       3.490519|     0.000537|   NA
+- reproduction_rate_1         |     -2.087593|       10.289211|       -0.202891|     0.839325|    NA
+- icu_patients_per_million_1  |     0.190497|       0.296369|       0.642770|     0.520748|   NA
+- positive_rate_1             |  -228.983981|      42.818274|      -5.347810|     0.000000|   NA
+(Intercept2)                |    -2.597473|       4.910180|      -0.528997|     0.597105|   NA
+- new_vaccinations_2          |     -0.000034|       0.000012|      -2.813641|     0.005144|   NA
+- hosp_patients_per_million_2 |     0.702415|       0.053628|      13.097898|     0.000000|   NA
+- new_tests_per_thousand_2    |     5.376280|       1.459229|       3.684331|     0.000261|   NA
+- icu_patients_per_million_2  |     0.196130|       0.294707|       0.665510|     0.506114|   NA
+- positive_rate_2             |  -232.390290|      39.341633|      -5.906981|     0.000000|   NA
+(Intercept3)                |    -1.468709|       4.604694|      -0.318959|     0.749926|   NA
+- new_vaccinations3           |     -0.000032|       0.000012|      -2.737214|     0.006476|   1.073086
+- hosp_patients_per_million3  |     0.723503|       0.043235|      16.734296|     0.000000|   2.255694
+- new_tests_per_thousand3     |     5.738216|       1.353142|       4.240661|     0.000028|   1.053668
+- positive_rate3              |  -242.379164|      36.340311|      -6.669705|     0.000000|   2.241964
+(Intercept4)                |    3.066906|       0.294431|      10.416376|     0.000000|    NA
+- new_vaccinations4           |     -0.000002|       0.000001|      -3.162494|     0.001685|   1.073086
+- hosp_patients_per_million4  |     0.044835|       0.002764|      16.218147|     0.000000|   2.255694
+- new_tests_per_thousand4     |     0.422862|       0.086522|       4.887343|     0.000001|   1.053668
+- positive_rate4              |  -14.369482|      2.323655|      -6.184001|     0.000000|   2.241964
+
+
+
+I fit an MLR model using initial variables, including "new_death" as the dependent variable. I removed the insignificant variable "reproduction_rate" and refit the model until I got a third model with all significant variables (excluding "icu_patients_per_million"). I performed a VIF test on the third model and found that all variables had a VIF less than 5, indicating no dependency between them.
+Also after I checked the goodness of my final model, since I found my third model did not match homoscedasticity, thus, I refit the new model by taking a square root transformation and doing the same check as above, to get the new fitted model. 
+
+## Goodness of the Final Model
+```{r,message=FALSE, echo=FALSE,warning=FALSE,fig.height=8}
+fourth_version = lm(sqrt(new_deaths) ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand, data = train_data)
+par(mfrow=c(3,2))
+plot(third_version, 1)
+plot(third_version, 2)
+plot(third_version_new, 1)
+plot(third_version_new, 2)
+#plot(first_version_test, 1)
+#plot(first_version_test, 2)
+
+```
+
+
+```{r, message=FALSE, echo=FALSE,warning=FALSE, include=FALSE}
+# Find outlier
+outlier <- rstandard(third_version_new)
+result <- which(outlier > 4 | outlier < -4)
+result
+
+# Leverage points
+leverage <- hatvalues(third_version_new)
+border <- 2 * (length(third_version_new$coefficients) / nrow(train_data))
+points <- which(leverage > border)
+train_data[points,]
+```
+
+```{r, warning=FALSE, include=FALSE}
+# Find influence functions
+distance <- cooks.distance(third_version_new)
+boundary <- qf(0.5, length(third_version_new$coefficients), nrow(train_data) - length(third_version_new$coefficients), lower.tail=T)
+which(distance > boundary())
+```
+
+```{r, echo=FALSE}
+#Partial F test
+set.seed(1000)
+knitr::kable(anova(fourth_version, third_version_new),cap="ANOVA table for partial F test") %>% kable_styling(latex_options = "HOLD_position")
+# F test for third_version
+knitr::kable(anova(third_version_new),cap="ANOVA table for  F test") %>% kable_styling(latex_options = "HOLD_position")
+```
+
+
+Then I make a QQ plot and a residual plot to check the four assumptions for third model, as the first 2 graphs, all points do not fit a straight line, thus normality does not fit
+
+
+The residual plot has no points clustered together and curved patterns, thus it meets the linearity and independence assumptions, but the homoscedasticity does not fit since there happens outward expansion.
+
+
+Thus, after I refit the model as a new third model, I redo the QQ plot and residual plot as the second 2 graphs. Now, all points fit a straight line, thus normality fits.
+
+
+The residual plot has no points clustered together and curved patterns and there is no shrink inward or expansion outward, thus, the linearity, independence and homoscedasticity assumptions all fit.
+
+
+For leverage points, outliers, and influence points, after calculation in R based on the new third model, I get zero outlier, 36 leverage points and no influence points.
+
+
+I then did a partial F test between the fourth model (new third model excluding "positive_rate") and the new third model, resulting in a p-value of 0 and indicating that the new third model should be chosen since H0(fourth model should be chosen) is rejected. Finally, I applied an F test to the new third model and found that all variables had p-values < 0.05, making it the final model.
+
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+# A function that take rows of dataset and dataset as input and return a result of SSres, Rsq, Rsq_adj, p, AIC, AICc, BIC
+# The function is made by professor's r code sample
+set.seed(10000)
+summary_model = function(model, n)
+{
+  SSres <- sum(model$residuals^2)
+  Rsq <- summary(model)$r.squared
+  Rsq_adj <- summary(model)$adj.r.squared
+  p <- length(model$coefficients) - 1
+  AIC <- n*log(SSres/n) + 2*p
+  AICc <- AIC + (2*(p+2)*(p+3)/(n-p-1))
+  BIC <- n*log(SSres/n) + (p+2)*log(n)
+  res <- c(SSres, Rsq, Rsq_adj, AIC, AICc, BIC)
+  names(res) <- c("SSres", "Rsq", "Rsq_adj", "AIC", "AIC_c", "BIC")
+  return(res)
+}
+first_version_test = lm(sqrt(new_deaths) ~ new_vaccinations + hosp_patients_per_million + new_tests_per_thousand + positive_rate ,data = test_data)
+
+# apply to the models
+model3 <- summary_model(fourth_version, nrow(train_data))
+model3_new <- summary_model(third_version_new, nrow(train_data))
+model4 <- summary_model(first_version_test, nrow(test_data))
+
+model_summary = data_frame(variables = c("SSres", "Rsq", "Rsq_adj", "AIC", "AICc", "BIC"), Model4 = model3, Model3New = model3_new, TestModel = model4)
+knitr::kable(model_summary, 'pipe', caption = " Summary of characteristics for different model and test model")
+```
+In Table4, I use two versions of training model(new third model and the subset of it) to compare adjust R square, AIC, AICc, BIC and SSres. My new third model has the bigger $R_{adj}^2$ and the smaller $R^2$, AIC, AICc, BIC among the two models, also, the Rsq and Rsq_adj are like my test model.
+
+Then, I also make a MLR with the same variables based on my test data, all variables are still significant(p-value > 0.05) except for "new_vaccinations", thus, this is my limitation. But, overall, my fitted model is good.
+
+
+# Discussion Section
+
+## Final Model Interpretation and Importance
+
+My final model is $y_{newDeaths} = 3.066906 + (-0.000002)x_{newVaccination} + 0.044835x_{hostPatients} + 0.422862x_{newTest} + (-14.369482)x_{positiveRate}$
+The intercept of my model is 3.066906. Holding other variables unchange, with one unit increase in $x_{newVaccination}$, $y_{newDeaths}$ will decrease in 0.000002, one unit increase in $x_{hostPatients}$, $\hat{y}_{newDeaths}$ will increase in 0.044835, one unit increase in $x_{bewTest}$, $y_{newDeaths}$ will increase in 0.422862, and one unit increase in $x_{positiveRate}$, $y_{newDeaths}$ will decrease in 14.369482,
+This model indicates that the positive rate has the most influences on new deaths and the new vaccination matters the least. Other two factors also have influences but not too much compared with positive rate. 
+Thus, the final model clearly emphasized my research questions that new vaccination, people who go to hospitals, people who take tests and positive rate do have influence on the new deaths caused by Covid-19 in Canada.
+
+## Limitations of the Analysis
+
+My test model does not well fetch with my training model since there is a variable insignificant in test data, this may be solved either by getting more samples or working with the correctness of my data.
+
+
+Compared with my literature research, I used quite a few variables and data sets (just Canada's data), thus, it may happen inaccuracy in the process of concluding a result. I should add more data or find more useful variables in the future.
+
+
+# Appendix
+
+```{r, echo=FALSE, warning=FALSE}
+#library("kableExtra")
+Total_summary <- data.frame(variables = c("new deaths", "reproduction rate", "new tests
+                                           per thousand","new vaccinations", "positive rate", "icu patients
+                                           per million", "hosp patients
+                                           per million"),
+                    minimum = c(round(min(no_na_canada$new_deaths),3), round(min(no_na_canada$reproduction_rate),3), round(min(no_na_canada$new_tests_per_thousand),3), round(min(no_na_canada$new_vaccinations),3), round(min(no_na_canada$positive_rate),3), round(min(no_na_canada$icu_patients_per_million),3), round(min(no_na_canada$hosp_patients_per_million),3)),
+                    maximum = c(round(max(no_na_canada$new_deaths),3), round(max(no_na_canada$reproduction_rate),3), round(max(no_na_canada$new_tests_per_thousand),3), round(max(no_na_canada$new_vaccinations),3), round(max(no_na_canada$positive_rate),3), round(max(no_na_canada$icu_patients_per_million),3), round(max(no_na_canada$hosp_patients_per_million),3)),
+                    mean = c(round(mean(no_na_canada$new_deaths),), round(mean(no_na_canada$reproduction_rate),2), round(mean(no_na_canada$new_tests_per_thousand), 2), round(mean(no_na_canada$new_vaccinations),2), round(mean(no_na_canada$positive_rate),2), round(mean(no_na_canada$icu_patients_per_million),2), round(mean(no_na_canada$hosp_patients_per_million),2)),
+                    median = c(round(median(no_na_canada$new_deaths),3), round(median(no_na_canada$reproduction_rate),3), round(median(no_na_canada$new_tests_per_thousand),3), round(median(no_na_canada$new_vaccinations),3), round(median(no_na_canada$positive_rate),3), round(median(no_na_canada$icu_patients_per_million),3), round(median(no_na_canada$hosp_patients_per_million),3)),
+                    IQR = c(round(quantile(no_na_canada$new_death,0.75) - quantile(no_na_canada$new_death,0.25),2), round(quantile(no_na_canada$reproduction_rate,0.75) - quantile(no_na_canada$reproduction_rate,0.25),2), round(quantile(no_na_canada$new_tests_per_thousand,0.75) - quantile(no_na_canada$new_tests_per_thousand,0.25),2), round(quantile(no_na_canada$new_vaccinations,0.75) - quantile(no_na_canada$new_vaccinations,0.25),2), round(quantile(no_na_canada$positive_rate,0.75) - quantile(no_na_canada$positive_rate,0.25),2), round(quantile(no_na_canada$icu_patients_per_million,0.75) - quantile(no_na_canada$icu_patients_per_million,0.25),2), round(quantile(no_na_canada$hosp_patients_per_million,0.75) - quantile(no_na_canada$hosp_patients_per_million,0.25),2)),
+                    Lower_outlier = c(sum(no_na_canada$new_death < quantile(no_na_canada$new_death,0.25) - 1.5 * (quantile(no_na_canada$new_death,0.75) - quantile(no_na_canada$new_death,0.25))),
+                                      sum(no_na_canada$reproduction_rate < quantile(no_na_canada$reproduction_rate,0.25) - 1.5 * (quantile(no_na_canada$reproduction_rate,0.75) - quantile(no_na_canada$reproduction_rate,0.25))),
+                                      sum(no_na_canada$new_tests_per_thousand < quantile(no_na_canada$new_tests_per_thousand,0.25) - 1.5 * (quantile(no_na_canada$new_tests_per_thousand,0.75) - quantile(no_na_canada$new_tests_per_thousand,0.25))),
+                                      sum(no_na_canada$new_vaccinations < quantile(no_na_canada$new_vaccinations,0.25) - 1.5 * (quantile(no_na_canada$new_vaccinations,0.75) - quantile(no_na_canada$new_vaccinations,0.25))), 
+                                      sum(no_na_canada$positive_rate < quantile(no_na_canada$positive_rate,0.25) - 1.5 * (quantile(no_na_canada$positive_rate,0.75) - quantile(no_na_canada$positive_rate,0.25))), 
+                                      sum(no_na_canada$icu_patients_per_million < quantile(no_na_canada$icu_patients_per_million,0.25) - 1.5 * (quantile(no_na_canada$icu_patients_per_million,0.75) - quantile(no_na_canada$icu_patients_per_million,0.25))), 
+                                      sum(no_na_canada$hosp_patients_per_million < quantile(no_na_canada$hosp_patients_per_million,0.25) - 1.5 * (quantile(no_na_canada$hosp_patients_per_million,0.75) - quantile(no_na_canada$hosp_patients_per_million,0.25)))),
+                    Upper_outlier = c(sum(no_na_canada$new_death > quantile(no_na_canada$new_death,0.75) + 1.5 * (quantile(no_na_canada$new_death,0.75) - quantile(no_na_canada$new_death,0.25))),
+                                      sum(no_na_canada$reproduction_rate > quantile(no_na_canada$reproduction_rate,0.75) + 1.5 * (quantile(no_na_canada$reproduction_rate,0.75) - quantile(no_na_canada$reproduction_rate,0.25))),
+                                      sum(no_na_canada$new_tests_per_thousand > quantile(no_na_canada$new_tests_per_thousand,0.75) + 1.5 * (quantile(no_na_canada$new_tests_per_thousand,0.75) - quantile(no_na_canada$new_tests_per_thousand,0.25))),
+                                      sum(no_na_canada$new_vaccinations > quantile(no_na_canada$new_vaccinations,0.75) + 1.5 * (quantile(no_na_canada$new_vaccinations,0.75) - quantile(no_na_canada$new_vaccinations,0.25))), 
+                                      sum(no_na_canada$positive_rate > quantile(no_na_canada$positive_rate,0.75) + 1.5 * (quantile(no_na_canada$positive_rate,0.75) - quantile(no_na_canada$positive_rate,0.25))), 
+                                      sum(no_na_canada$icu_patients_per_million > quantile(no_na_canada$icu_patients_per_million,0.75) + 1.5 * (quantile(no_na_canada$icu_patients_per_million,0.75) - quantile(no_na_canada$icu_patients_per_million,0.25))), 
+                                      sum(no_na_canada$hosp_patients_per_million > quantile(no_na_canada$hosp_patients_per_million,0.75) + 1.5 * (quantile(no_na_canada$hosp_patients_per_million,0.75) - quantile(no_na_canada$hosp_patients_per_million,0.25)))))
+
+
+knitr::kable(Total_summary, 'pipe', caption = "Table 1: Summary of all variables")
+
+kbl(broom::tidy(first_version_test)[,], caption = "Summary Table of First Version of Test Model", 
+      digits = 6, format = "markdown", padding= 3) 
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+new_death_factor1 = ggplot(data=no_na_canada, aes(x = new_vaccinations / 1000, y = new_deaths)) + geom_point(size=0.5, col = "green") + 
+  ggtitle("New death influence factor
+          : New vaccinations") +
+     xlab("Number of new people who take vaccinations") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "blue") +
+  theme_classic()
+
+new_death_factor2 = ggplot(data=no_na_canada, aes(x = hosp_patients_per_million, y = new_deaths)) + geom_point(size=0.5, col = "red") + 
+  ggtitle("New death influence factor
+          : People go to hospital") +
+     xlab("Number of people per million
+          who go to hospital") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "green") +
+  theme_classic()
+
+new_death_factor3 = ggplot(data=no_na_canada, aes(x = new_tests_per_thousand, y = new_deaths)) + geom_point(size=0.5, col = "purple") + 
+  ggtitle("New death influence factor:
+          People take a test") +
+     xlab("Number of people per thousand
+          who take a test") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "yellow") +
+  theme_classic()
+
+new_death_factor4 = ggplot(data=no_na_canada, aes(x = reproduction_rate, y = new_deaths)) + geom_point(size=0.5, col = "blue") + 
+  ggtitle("New death influence factor:
+          People get Covid-19 again") +
+     xlab("The rate people who get Covid-19 again") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "orange") +
+  theme_classic()
+
+new_death_factor5 = ggplot(data=no_na_canada, aes(x = icu_patients_per_million, y = new_deaths)) + geom_point(size=0.5, col = "green") + 
+  ggtitle("New death influence factor:
+          ICU patients") +
+     xlab("Patient go to ICU per million") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "red") +
+  theme_classic()
+
+new_death_factor6 = ggplot(data=no_na_canada, aes(x = positive_rate, y = new_deaths)) + geom_point(size=0.5, col = "brown") + 
+  ggtitle("New death influence factor:
+          Positive rate") +
+     xlab("The rate of positive people") + ylab("New death people") +
+  geom_smooth(method=lm, se=FALSE, col = "blue") +
+  theme_classic()
+
+#install.packages("gridExtra")
+library(gridExtra)
+grid.arrange(new_death_factor1, new_death_factor2, new_death_factor3, new_death_factor4, new_death_factor5, new_death_factor6, nrow=3, ncol=2)
+```
+
+
+
+# References
+Esai Selvan, M. (2020, May 27). Risk factors for death from covid-19. Nature News. Retrieved October 22, 2022.
+
+Fu, L., Fei, J., Xiang, H.-X., Xiang, Y., Tan, Z.-X., Li, M.-D., Liu, F.-F., Liu, H.-Y., Zheng, L., Li, Y., Zhao, H., &amp; Xu, D.-X. (2020, January 1). Influence factors of death risk among COVID-19 patients in Wuhan, China: A hospital-based case-cohort study. medRxiv. Retrieved October 22, 2022.
+
+Kozlovskyi, S., Bilenko, D., Dluhopolskyi, O., Vitvitskyi, S., Bondarenko, O., & Korniichuk, O. (2021). Determinants of COVID-19 Death Rate in Europe: Empirical Analysis. Problemy Ekorozwoju, 16(1), 17–28.
+
+Letsoalo, R. (2022, October 3). Covid analysis. Kaggle. Retrieved October 22, 2022, from https://www.kaggle.com/datasets/reikagileletsoalo/covid-analysis?select=owid-covid-data.csv 
