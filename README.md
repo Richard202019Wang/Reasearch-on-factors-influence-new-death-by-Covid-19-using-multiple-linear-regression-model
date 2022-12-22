@@ -1,0 +1,1 @@
+# Reasearch-on-factors-influence-new-death-by-Covid-19-using-multiple-linear-regression-model
